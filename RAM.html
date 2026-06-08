@@ -1,0 +1,869 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NeoRAM: Interactive Memory Simulator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        :root {
+            --primary: #00f3ff;
+            --secondary: #ff00e6;
+            --accent: #00ff9d;
+            --dark: #0a0a1a;
+            --darker: #050510;
+            --panel: rgba(10, 20, 40, 0.8);
+            --text: #e0e0ff;
+        }
+
+        body {
+            background: linear-gradient(135deg, var(--darker) 0%, var(--dark) 100%);
+            color: var(--text);
+            min-height: 100vh;
+            overflow-x: hidden;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            border-bottom: 1px solid rgba(0, 243, 255, 0.3);
+            position: relative;
+        }
+
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            text-shadow: 0 0 15px rgba(0, 243, 255, 0.5);
+            letter-spacing: 2px;
+        }
+
+        .tagline {
+            font-size: 1.2rem;
+            opacity: 0.8;
+            margin-bottom: 20px;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+
+        .ram-visualization {
+            background: var(--panel);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 0 30px rgba(0, 243, 255, 0.1);
+            border: 1px solid rgba(0, 243, 255, 0.2);
+            backdrop-filter: blur(10px);
+        }
+
+        .ram-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(0, 243, 255, 0.2);
+        }
+
+        .ram-grid {
+            display: grid;
+            grid-template-columns: repeat(16, 1fr);
+            gap: 8px;
+        }
+
+        .memory-cell {
+            aspect-ratio: 1;
+            background: rgba(5, 15, 30, 0.8);
+            border: 1px solid rgba(0, 243, 255, 0.3);
+            border-radius: 5px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: var(--text);
+            font-size: 0.7rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .memory-cell:hover {
+            transform: scale(1.05);
+            border-color: var(--primary);
+            box-shadow: 0 0 10px var(--primary);
+        }
+
+        .memory-cell.active {
+            background: rgba(0, 243, 255, 0.2);
+            border-color: var(--primary);
+            box-shadow: 0 0 15px var(--primary);
+            animation: pulse 1.5s infinite;
+        }
+
+        .memory-cell.accessed {
+            background: rgba(0, 255, 157, 0.2);
+            border-color: var(--accent);
+            box-shadow: 0 0 15px var(--accent);
+        }
+
+        .cell-address {
+            font-size: 0.6rem;
+            opacity: 0.7;
+            margin-bottom: 3px;
+        }
+
+        .cell-value {
+            font-weight: bold;
+            font-size: 0.8rem;
+        }
+
+        .control-panel {
+            background: var(--panel);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 0 30px rgba(255, 0, 230, 0.1);
+            border: 1px solid rgba(255, 0, 230, 0.2);
+            backdrop-filter: blur(10px);
+        }
+
+        .panel-section {
+            margin-bottom: 25px;
+        }
+
+        .panel-title {
+            font-size: 1.2rem;
+            margin-bottom: 15px;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .panel-title::before {
+            content: "▶";
+            font-size: 0.8rem;
+            color: var(--secondary);
+        }
+
+        .btn {
+            width: 100%;
+            padding: 12px 15px;
+            margin: 8px 0;
+            border: none;
+            border-radius: 8px;
+            background: linear-gradient(135deg, rgba(0, 243, 255, 0.2), rgba(255, 0, 230, 0.2));
+            color: var(--text);
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            transition: 0.5s;
+        }
+
+        .btn:hover::before {
+            left: 100%;
+        }
+
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0, 243, 255, 0.3);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), #0099ff);
+            color: var(--dark);
+            font-weight: bold;
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, var(--secondary), #ff3399);
+            color: white;
+        }
+
+        .btn-accent {
+            background: linear-gradient(135deg, var(--accent), #00cc7a);
+            color: var(--dark);
+            font-weight: bold;
+        }
+
+        .input-group {
+            margin-bottom: 15px;
+        }
+
+        .input-label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px 15px;
+            border-radius: 8px;
+            border: 1px solid rgba(0, 243, 255, 0.3);
+            background: rgba(5, 15, 30, 0.8);
+            color: var(--text);
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 10px rgba(0, 243, 255, 0.5);
+        }
+
+        .status-panel {
+            background: var(--panel);
+            border-radius: 15px;
+            padding: 20px;
+            margin-top: 20px;
+            box-shadow: 0 0 30px rgba(0, 255, 157, 0.1);
+            border: 1px solid rgba(0, 255, 157, 0.2);
+            backdrop-filter: blur(10px);
+        }
+
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+
+        .status-item {
+            background: rgba(5, 15, 30, 0.6);
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .status-label {
+            font-size: 0.9rem;
+            opacity: 0.8;
+            margin-bottom: 5px;
+        }
+
+        .status-value {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: var(--primary);
+        }
+
+        .log-container {
+            margin-top: 20px;
+        }
+
+        .log {
+            height: 150px;
+            overflow-y: auto;
+            background: rgba(5, 15, 30, 0.8);
+            border-radius: 10px;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            border: 1px solid rgba(0, 243, 255, 0.2);
+        }
+
+        .log-entry {
+            margin-bottom: 8px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .log-entry.read {
+            color: var(--accent);
+        }
+
+        .log-entry.write {
+            color: var(--secondary);
+        }
+
+        .log-entry.system {
+            color: var(--primary);
+        }
+
+        .explanation {
+            background: var(--panel);
+            border-radius: 15px;
+            padding: 25px;
+            margin-top: 30px;
+            box-shadow: 0 0 30px rgba(0, 243, 255, 0.1);
+            border: 1px solid rgba(0, 243, 255, 0.2);
+            backdrop-filter: blur(10px);
+        }
+
+        .explanation h2 {
+            color: var(--primary);
+            margin-bottom: 15px;
+            font-size: 1.8rem;
+        }
+
+        .concept-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .concept-card {
+            background: rgba(5, 15, 30, 0.6);
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .concept-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--primary);
+            box-shadow: 0 5px 15px rgba(0, 243, 255, 0.2);
+        }
+
+        .concept-title {
+            color: var(--accent);
+            margin-bottom: 10px;
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .concept-title::before {
+            content: "◉";
+            color: var(--secondary);
+            font-size: 0.8rem;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(0, 243, 255, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(0, 243, 255, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(0, 243, 255, 0); }
+        }
+
+        @keyframes glow {
+            0% { text-shadow: 0 0 5px var(--primary); }
+            50% { text-shadow: 0 0 20px var(--primary), 0 0 30px var(--secondary); }
+            100% { text-shadow: 0 0 5px var(--primary); }
+        }
+
+        .glow {
+            animation: glow 2s infinite;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 40px;
+            padding: 20px;
+            border-top: 1px solid rgba(0, 243, 255, 0.3);
+            font-size: 0.9rem;
+            opacity: 0.7;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 1100px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .ram-grid {
+                grid-template-columns: repeat(12, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .ram-grid {
+                grid-template-columns: repeat(8, 1fr);
+            }
+            
+            .status-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            h1 {
+                font-size: 2.2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1 class="glow">NeoRAM Simulator</h1>
+            <p class="tagline">Experience how computer memory works in this interactive futuristic simulation</p>
+        </header>
+
+        <div class="main-content">
+            <div class="ram-visualization">
+                <div class="ram-header">
+                    <h2>Memory Matrix</h2>
+                    <div class="memory-stats">
+                        <span>Capacity: 256 Bytes</span>
+                    </div>
+                </div>
+                <div class="ram-grid" id="ramGrid">
+                    <!-- Memory cells will be generated by JavaScript -->
+                </div>
+            </div>
+
+            <div class="control-panel">
+                <div class="panel-section">
+                    <h3 class="panel-title">Memory Operations</h3>
+                    <div class="input-group">
+                        <label class="input-label">Memory Address (0-255)</label>
+                        <input type="number" id="cellAddress" min="0" max="255" placeholder="Enter address">
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">Value to Write</label>
+                        <input type="text" id="cellValue" placeholder="Enter data">
+                    </div>
+                    <button class="btn btn-primary" onclick="writeToMemory()">Write Data</button>
+                    <button class="btn" onclick="readFromMemory()">Read Data</button>
+                </div>
+
+                <div class="panel-section">
+                    <h3 class="panel-title">RAM Controls</h3>
+                    <button class="btn" onclick="fillWithRandomData()">Fill with Random Data</button>
+                    <button class="btn" onclick="clearAllMemory()">Clear Memory</button>
+                    <button class="btn btn-secondary" onclick="powerCycle()">Power Cycle</button>
+                </div>
+
+                <div class="panel-section">
+                    <h3 class="panel-title">Demo Programs</h3>
+                    <button class="btn" onclick="runSequenceAccess()">Sequential Access</button>
+                    <button class="btn" onclick="runRandomAccess()">Random Access</button>
+                    <button class="btn btn-accent" onclick="runPatternDemo()">Pattern Demo</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="status-panel">
+            <h3 class="panel-title">System Status</h3>
+            <div class="status-grid">
+                <div class="status-item">
+                    <div class="status-label">Memory Usage</div>
+                    <div class="status-value" id="memoryUsage">0%</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">Active Cells</div>
+                    <div class="status-value" id="activeCells">0 / 256</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">Power State</div>
+                    <div class="status-value" id="powerState">ONLINE</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">Last Operation</div>
+                    <div class="status-value" id="lastOperation">-</div>
+                </div>
+            </div>
+            
+            <div class="log-container">
+                <h3 class="panel-title">Operation Log</h3>
+                <div class="log" id="operationLog">
+                    <div class="log-entry system">System initialized. RAM ready.</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="explanation">
+            <h2>Understanding RAM</h2>
+            <p>RAM (Random Access Memory) is your computer's short-term memory. It temporarily stores data that your computer is actively using so it can be accessed quickly by the CPU.</p>
+            
+            <div class="concept-grid">
+                <div class="concept-card">
+                    <h3 class="concept-title">Random Access</h3>
+                    <p>Any memory location can be accessed directly in any order, unlike sequential storage (like a tape) where you have to go through previous data first.</p>
+                </div>
+                <div class="concept-card">
+                    <h3 class="concept-title">Volatility</h3>
+                    <p>RAM is volatile memory, meaning it loses all stored data when power is turned off. This is why you need to save your work to a hard drive or SSD.</p>
+                </div>
+                <div class="concept-card">
+                    <h3 class="concept-title">Speed</h3>
+                    <p>RAM is much faster than storage drives, allowing the CPU to quickly access the data it needs for current tasks.</p>
+                </div>
+                <div class="concept-card">
+                    <h3 class="concept-title">Temporary Workspace</h3>
+                    <p>Think of RAM as your computer's desk space - the more you have, the more projects you can work on simultaneously without slowing down.</p>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <p>NeoRAM Simulator | An Interactive Learning Experience | Made with ❤️ for CS Enthusiasts</p>
+        </footer>
+    </div>
+
+    <script>
+        class RAMSimulator {
+            constructor(size = 256) {
+                this.size = size;
+                this.memory = new Array(size).fill(null);
+                this.isPowered = true;
+                this.accessedCells = new Set();
+                this.operationLog = [];
+                this.init();
+            }
+
+            init() {
+                this.createMemoryGrid();
+                this.updateStatus();
+                this.logOperation('system', 'System initialized. RAM ready.');
+            }
+
+            createMemoryGrid() {
+                const grid = document.getElementById('ramGrid');
+                grid.innerHTML = '';
+
+                for (let i = 0; i < this.size; i++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'memory-cell';
+                    cell.innerHTML = `
+                        <div class="cell-address">0x${i.toString(16).padStart(2, '0')}</div>
+                        <div class="cell-value">${this.memory[i] === null ? '--' : this.memory[i]}</div>
+                    `;
+                    
+                    cell.addEventListener('click', () => {
+                        this.handleCellClick(i);
+                    });
+
+                    grid.appendChild(cell);
+                }
+            }
+
+            handleCellClick(address) {
+                if (!this.isPowered) {
+                    this.logOperation('system', 'Cannot access memory - POWER OFFLINE');
+                    return;
+                }
+
+                const value = prompt(
+                    `Memory Cell: 0x${address.toString(16).padStart(2, '0').toUpperCase()}\n` +
+                    `Current value: ${this.memory[address] === null ? 'Empty' : this.memory[address]}\n\n` +
+                    `Enter new value (or cancel to read):`
+                );
+                
+                if (value !== null) {
+                    this.write(address, value);
+                } else {
+                    this.read(address);
+                }
+            }
+
+            write(address, value) {
+                if (!this.isPowered) {
+                    this.logOperation('system', 'Write failed - POWER OFFLINE');
+                    return;
+                }
+
+                if (address >= 0 && address < this.size) {
+                    this.memory[address] = value;
+                    this.accessedCells.add(address);
+                    this.logOperation('write', `WRITE to 0x${address.toString(16).padStart(2, '0')} = ${value}`);
+                    this.updateDisplay();
+                    this.updateStatus();
+                    this.highlightCell(address, 'write');
+                }
+            }
+
+            read(address) {
+                if (!this.isPowered) {
+                    this.logOperation('system', 'Read failed - POWER OFFLINE');
+                    return;
+                }
+
+                if (address >= 0 && address < this.size) {
+                    const value = this.memory[address];
+                    this.logOperation('read', `READ from 0x${address.toString(16).padStart(2, '0')} = ${value === null ? 'NULL' : value}`);
+                    this.highlightCell(address, 'read');
+                    
+                    // Show a more stylish alert
+                    this.showValuePopup(address, value);
+                }
+            }
+
+            showValuePopup(address, value) {
+                // Create a custom popup instead of using alert()
+                const popup = document.createElement('div');
+                popup.style.cssText = `
+                    position: fixed;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    background: var(--panel);
+                    padding: 20px;
+                    border-radius: 10px;
+                    border: 2px solid var(--primary);
+                    box-shadow: 0 0 30px rgba(0, 243, 255, 0.5);
+                    z-index: 1000;
+                    text-align: center;
+                    min-width: 300px;
+                `;
+                
+                popup.innerHTML = `
+                    <h3 style="color: var(--primary); margin-bottom: 15px;">Memory Read</h3>
+                    <p style="margin-bottom: 10px;">Address: <code style="color: var(--accent);">0x${address.toString(16).padStart(2, '0')}</code></p>
+                    <p>Value: <strong style="color: var(--secondary); font-size: 1.2em;">${value === null ? 'Empty' : value}</strong></p>
+                    <button onclick="this.parentElement.remove()" style="margin-top: 15px; padding: 8px 20px; background: var(--primary); color: var(--dark); border: none; border-radius: 5px; cursor: pointer;">OK</button>
+                `;
+                
+                document.body.appendChild(popup);
+            }
+
+            highlightCell(address, operation) {
+                const cells = document.querySelectorAll('.memory-cell');
+                const cell = cells[address];
+                
+                cell.classList.remove('active', 'accessed');
+                void cell.offsetWidth; // Trigger reflow
+                
+                if (operation === 'write') {
+                    cell.classList.add('active');
+                } else {
+                    cell.classList.add('accessed');
+                }
+
+                setTimeout(() => {
+                    cell.classList.remove('active', 'accessed');
+                }, 1500);
+            }
+
+            fillWithRandomData() {
+                if (!this.isPowered) {
+                    this.logOperation('system', 'Cannot fill memory - POWER OFFLINE');
+                    return;
+                }
+
+                const hexValues = ['A5', '3F', 'C8', '71', '9B', '42', 'E6', '1D', 'F0', '57'];
+                const textValues = ['DATA', 'CODE', 'VAR', 'TEMP', 'SYS', 'CONF', 'LOG', 'BUF'];
+                
+                for (let i = 0; i < this.size; i++) {
+                    if (Math.random() > 0.4) { // Fill ~60% of cells
+                        let randomValue;
+                        if (Math.random() > 0.5) {
+                            randomValue = '0x' + hexValues[Math.floor(Math.random() * hexValues.length)];
+                        } else {
+                            randomValue = textValues[Math.floor(Math.random() * textValues.length)] + Math.floor(Math.random() * 10);
+                        }
+                        this.write(i, randomValue);
+                    }
+                }
+                
+                this.logOperation('system', 'Memory filled with random data');
+            }
+
+            clearAllMemory() {
+                if (!this.isPowered) {
+                    this.logOperation('system', 'Cannot clear memory - POWER OFFLINE');
+                    return;
+                }
+
+                this.memory.fill(null);
+                this.accessedCells.clear();
+                this.updateDisplay();
+                this.updateStatus();
+                this.logOperation('system', 'All memory cleared');
+            }
+
+            powerCycle() {
+                this.isPowered = false;
+                this.updateStatus();
+                this.logOperation('system', 'Powering down...');
+                
+                setTimeout(() => {
+                    this.memory.fill(null);
+                    this.accessedCells.clear();
+                    this.isPowered = true;
+                    this.updateDisplay();
+                    this.updateStatus();
+                    this.logOperation('system', 'Power cycle complete. All data lost (volatile memory).');
+                }, 2000);
+            }
+
+            updateDisplay() {
+                const cells = document.querySelectorAll('.memory-cell');
+                cells.forEach((cell, index) => {
+                    const valueElement = cell.querySelector('.cell-value');
+                    valueElement.textContent = this.memory[index] === null ? '--' : this.memory[index];
+                    
+                    if (this.memory[index] !== null) {
+                        cell.style.background = 'rgba(128, 0, 255, 0.2)';
+                    } else {
+                        cell.style.background = 'rgba(5, 15, 30, 0.8)';
+                    }
+                });
+            }
+
+            updateStatus() {
+                const usage = Math.round((this.accessedCells.size / this.size) * 100);
+                document.getElementById('memoryUsage').textContent = `${usage}%`;
+                document.getElementById('activeCells').textContent = `${this.accessedCells.size} / ${this.size}`;
+                
+                const powerState = document.getElementById('powerState');
+                powerState.textContent = this.isPowered ? 'ONLINE' : 'OFFLINE';
+                powerState.style.color = this.isPowered ? 'var(--accent)' : 'var(--secondary)';
+            }
+
+            logOperation(type, message) {
+                const timestamp = new Date().toLocaleTimeString();
+                const logEntry = document.createElement('div');
+                logEntry.className = `log-entry ${type}`;
+                logEntry.textContent = `[${timestamp}] ${message}`;
+                
+                const logElement = document.getElementById('operationLog');
+                logElement.appendChild(logEntry);
+                
+                // Keep only last 15 entries
+                while (logElement.children.length > 15) {
+                    logElement.removeChild(logElement.firstChild);
+                }
+                
+                logElement.scrollTop = logElement.scrollHeight;
+                
+                // Update last operation
+                document.getElementById('lastOperation').textContent = message;
+            }
+
+            // Demo functions
+            async runSequenceAccess() {
+                if (!this.isPowered) return;
+
+                this.logOperation('system', 'Starting sequential access demo');
+                
+                for (let i = 0; i < this.size; i++) {
+                    if (i % 4 === 0) { // Write to every 4th cell
+                        this.write(i, `SEQ${i.toString().padStart(3, '0')}`);
+                        await this.delay(100);
+                    }
+                }
+            }
+
+            async runRandomAccess() {
+                if (!this.isPowered) return;
+
+                this.logOperation('system', 'Starting random access demo');
+                
+                for (let i = 0; i < 25; i++) {
+                    const randomAddress = Math.floor(Math.random() * this.size);
+                    const randomValue = '0x' + Math.floor(Math.random() * 256).toString(16).padStart(2, '0').toUpperCase();
+                    this.write(randomAddress, randomValue);
+                    await this.delay(200);
+                }
+            }
+
+            async runPatternDemo() {
+                if (!this.isPowered) return;
+
+                this.logOperation('system', 'Starting pattern demo');
+                
+                // Create a checkerboard pattern
+                for (let i = 0; i < this.size; i++) {
+                    if ((Math.floor(i / 16) + i) % 2 === 0) {
+                        this.write(i, 'PAT_A');
+                        await this.delay(50);
+                    }
+                }
+                
+                await this.delay(1000);
+                
+                // Create a different pattern
+                for (let i = 0; i < this.size; i++) {
+                    if (i % 8 < 4) {
+                        this.write(i, 'PAT_B');
+                        await this.delay(30);
+                    }
+                }
+            }
+
+            delay(ms) {
+                return new Promise(resolve => setTimeout(resolve, ms));
+            }
+        }
+
+        // Global functions for button clicks
+        const ram = new RAMSimulator(256);
+
+        function writeToMemory() {
+            const address = parseInt(document.getElementById('cellAddress').value);
+            const value = document.getElementById('cellValue').value;
+            
+            if (!isNaN(address) && address >= 0 && address < 256) {
+                ram.write(address, value);
+                document.getElementById('cellAddress').value = '';
+                document.getElementById('cellValue').value = '';
+            } else {
+                alert('Please enter a valid address between 0 and 255');
+            }
+        }
+
+        function readFromMemory() {
+            const address = parseInt(document.getElementById('cellAddress').value);
+            
+            if (!isNaN(address) && address >= 0 && address < 256) {
+                ram.read(address);
+                document.getElementById('cellAddress').value = '';
+            } else {
+                alert('Please enter a valid address between 0 and 255');
+            }
+        }
+
+        function fillWithRandomData() {
+            ram.fillWithRandomData();
+        }
+
+        function clearAllMemory() {
+            ram.clearAllMemory();
+        }
+
+        function powerCycle() {
+            ram.powerCycle();
+        }
+
+        function runSequenceAccess() {
+            ram.runSequenceAccess();
+        }
+
+        function runRandomAccess() {
+            ram.runRandomAccess();
+        }
+
+        function runPatternDemo() {
+            ram.runPatternDemo();
+        }
+    </script>
+</body>
+</html>
